@@ -2,7 +2,7 @@
 name = "yahoo-agent"
 version = "0.1.0"
 description = ""
-authors = ["Nick Roshdieh <nickroshd@gmail.com>"]
+authors = ["Nick Roshdieh"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
