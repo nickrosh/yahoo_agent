@@ -75,8 +75,7 @@ def get_price_change_percent(symbol, days_ago):
 
 
 def get_simple_moving_average(symbol, days_ago, span):
-    historical_data = get_data_df(symbol, days_ago+span)
-    historical_data['SMA'] = historical_data['Close'].rolling(span).mean()
+    historical_data = get_data_df(symbol, days_ago+max(span))
 
     # Plotly
     fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
@@ -108,17 +107,18 @@ def get_simple_moving_average(symbol, days_ago, span):
     )
     )
     fig.update_yaxes(title_text='Stock Price')
-    fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['SMA'], mode='lines', name=f'{span} SMA'))
+    for val in span:
+        historical_data[f'{val} SMA'] = historical_data['Close'].rolling(val).mean()
+        fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data[f'{val} SMA'], mode='lines', name=f'{val} SMA'))
     st.plotly_chart(fig, use_container_width=True)
-    old_SMA = historical_data['SMA'].iloc[0]
-    new_SMA = historical_data['SMA'].iloc[-1]
-    percent_change = ((new_SMA - old_SMA) / old_SMA) * 100
-    return round(percent_change, 2)
+    # old_SMA = historical_data['SMA'].iloc[0]
+    # new_SMA = historical_data['SMA'].iloc[-1]
+    # percent_change = ((new_SMA - old_SMA) / old_SMA) * 100
+    # return round(percent_change, 2)
 
 
 def get_exponential_moving_average(symbol, days_ago, span):
-    historical_data = get_data_df(symbol, days_ago+span)
-    historical_data['EMA'] = historical_data['Close'].ewm(span=span).mean()
+    historical_data = get_data_df(symbol, days_ago+max(span))
 
     # Plotly
     fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
@@ -129,7 +129,6 @@ def get_exponential_moving_average(symbol, days_ago, span):
         high=historical_data['High'],
         low=historical_data['Low'],
         close=historical_data['Close'],
-        # volume=historical_data['Volume'],
     )])
     fig.update_xaxes(rangebreaks=[
         dict(bounds=["sat", "mon"]), #hide weekends
@@ -150,12 +149,14 @@ def get_exponential_moving_average(symbol, days_ago, span):
     )
     )
     fig.update_yaxes(title_text='Stock Price')
-    fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['EMA'], mode='lines', name=f'{span} EMA'))
+    for val in span:
+        historical_data[f'{val} EMA'] = historical_data['Close'].ewm(span=val).mean()
+        fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data[f'{val} EMA'], mode='lines', name=f'{val} EMA'))
     st.plotly_chart(fig, use_container_width=True)
-    old_EMA = historical_data['EMA'].iloc[0]
-    new_EMA = historical_data['EMA'].iloc[-1]
-    percent_change = ((new_EMA - old_EMA) / old_EMA) * 100
-    return round(percent_change, 2)
+    # old_EMA = historical_data['EMA'].iloc[0]
+    # new_EMA = historical_data['EMA'].iloc[-1]
+    # percent_change = ((new_EMA - old_EMA) / old_EMA) * 100
+    # return round(percent_change, 2)
 
 
 def calculate_performance(symbol, days_ago):

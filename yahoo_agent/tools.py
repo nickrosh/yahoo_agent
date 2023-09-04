@@ -76,18 +76,18 @@ class StockSMAInput(BaseModel):
 
     stockticker: str = Field(..., description='Ticker symbol for stock or index')
     days_ago: int = Field(..., description='Int number of days to look back')
-    span: int = Field(..., description='Int number of days for moving average')
+    span: List[int] = Field(..., description='Int number of days for moving averages')
 
 
 class StockSMATool(BaseTool):
     name = 'get_simple_moving_average'
-    description = "Useful for when you need to find out the percent change of the simple moving average of a stock's price. You should input the stock ticker used on the yfinance API and also input the number of days to check the change over and also input the time span for the moving average"
+    description = "Useful for when you need to find out the percent change of the simple moving average of a stock's price. You should input the stock ticker used on the yfinance API and also input the number of days to check the change over and also input the time spans for the multiple moving averages"
 
-    def _run(self, stockticker: str, days_ago: int, span: int):
+    def _run(self, stockticker: str, days_ago: int, span: List[int]):
         price_change_response = get_simple_moving_average(stockticker, days_ago, span)
         return price_change_response
     
-    def _arun(self, stockricker: str, days_ago: int, span: int):
+    def _arun(self, stockricker: str, days_ago: int, span: List[int]):
         raise NotImplementedError("This tool does not support async")
     
     args_schema: Optional[Type[BaseModel]] = StockSMAInput
@@ -98,18 +98,18 @@ class StockEMAInput(BaseModel):
 
     stockticker: str = Field(..., description='Ticker symbol for stock or index')
     days_ago: int = Field(..., description='Int number of days to look back')
-    span: int = Field(..., description='Int number of days for moving average')
+    span: List[int] = Field(..., description='Int number of days for moving averages')
 
 
 class StockEMATool(BaseTool):
     name = 'get_exponential_moving_average'
-    description = "Useful for when you need to find out the percent change of the exponential moving average of a stock's price. You should input the stock ticker used on the yfinance API and also input the number of days to check the change over and also input the time span for the moving average"
+    description = "Useful for when you need to find out the percent change of the exponential moving average of a stock's price. You should input the stock ticker used on the yfinance API and also input the number of days to check the change over and also input the time spans for the multiple moving averages"
 
-    def _run(self, stockticker: str, days_ago: int, span: int):
+    def _run(self, stockticker: str, days_ago: int, span: List[int]):
         price_change_response = get_exponential_moving_average(stockticker, days_ago, span)
         return price_change_response
     
-    def _arun(self, stockricker: str, days_ago: int, span: int):
+    def _arun(self, stockricker: str, days_ago: int, span: List[int]):
         raise NotImplementedError("This tool does not support async")
     
     args_schema: Optional[Type[BaseModel]] = StockEMAInput
