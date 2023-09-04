@@ -35,21 +35,15 @@ def get_todays_price(symbol):
     return round(todays_data['Close'].iloc[0], 2)
 
 
-def get_price_change_percent(symbol, days_ago):
-    historical_data = get_data_df(symbol, days_ago)
-    old_price = historical_data['Close'].iloc[0]
-    new_price = historical_data['Close'].iloc[-1]
-    percent_change = ((new_price - old_price) / old_price) * 100
-
-    # Plotly
+def generate_candlestick(df, symbol, days_ago):
     fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
         data=[
-        go.Candlestick(x=historical_data.index,
-        open=historical_data['Open'],
-        high=historical_data['High'],
-        low=historical_data['Low'],
-        close=historical_data['Close'],
-        # volume=historical_data['Volume'],
+        go.Candlestick(name=symbol,
+        x=df.index,
+        open=df['Open'],
+        high=df['High'],
+        low=df['Low'],
+        close=df['Close'],
     )])
     fig.update_xaxes(rangebreaks=[
         dict(bounds=["sat", "mon"]), #hide weekends
@@ -70,43 +64,23 @@ def get_price_change_percent(symbol, days_ago):
     )
     )
     fig.update_yaxes(title_text='Stock Price')
+    return fig
+
+
+def get_price_change_percent(symbol, days_ago):
+    historical_data = get_data_df(symbol, days_ago)
+    old_price = historical_data['Close'].iloc[0]
+    new_price = historical_data['Close'].iloc[-1]
+    percent_change = ((new_price - old_price) / old_price) * 100
+    fig = generate_candlestick(df=historical_data, symbol=symbol, days_ago=days_ago)
     st.plotly_chart(fig, use_container_width=True)
     return round(percent_change, 2)
 
 
 def get_simple_moving_average(symbol, days_ago, span):
     historical_data = get_data_df(symbol, days_ago+max(span))
+    fig = generate_candlestick(df=historical_data, symbol=symbol, days_ago=days_ago)
 
-    # Plotly
-    fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
-        data=[
-        go.Candlestick(name=f'{symbol}',
-        x=historical_data.index,
-        open=historical_data['Open'],
-        high=historical_data['High'],
-        low=historical_data['Low'],
-        close=historical_data['Close'],
-        # volume=historical_data['Volume'],
-    )])
-    fig.update_xaxes(rangebreaks=[
-        dict(bounds=["sat", "mon"]), #hide weekends
-        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
-    ],
-    title_text='Date',
-    rangeslider_visible=True,
-    rangeselector=dict(
-        buttons=list([
-            dict(count=1, label="1D", step="day", stepmode="backward"),
-            dict(count=5, label="5D", step="day", stepmode="backward"),
-            dict(count=1, label="1M", step="month", stepmode="backward"),
-            dict(count=6, label="6M", step="month", stepmode="backward"),
-            dict(count=1, label="YTD", step="year", stepmode="todate"),
-            dict(count=1, label="1Y", step="year", stepmode="backward"),
-            dict(step="all")
-        ])
-    )
-    )
-    fig.update_yaxes(title_text='Stock Price')
     for val in span:
         historical_data[f'{val} SMA'] = historical_data['Close'].rolling(val).mean()
         fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data[f'{val} SMA'], mode='lines', name=f'{val} SMA'))
@@ -119,36 +93,8 @@ def get_simple_moving_average(symbol, days_ago, span):
 
 def get_exponential_moving_average(symbol, days_ago, span):
     historical_data = get_data_df(symbol, days_ago+max(span))
+    fig = generate_candlestick(df=historical_data, symbol=symbol, days_ago=days_ago)
 
-    # Plotly
-    fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
-        data=[
-        go.Candlestick(name=f'{symbol}',
-        x=historical_data.index,
-        open=historical_data['Open'],
-        high=historical_data['High'],
-        low=historical_data['Low'],
-        close=historical_data['Close'],
-    )])
-    fig.update_xaxes(rangebreaks=[
-        dict(bounds=["sat", "mon"]), #hide weekends
-        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
-    ],
-    title_text='Date',
-    rangeslider_visible=True,
-    rangeselector=dict(
-        buttons=list([
-            dict(count=1, label="1D", step="day", stepmode="backward"),
-            dict(count=5, label="5D", step="day", stepmode="backward"),
-            dict(count=1, label="1M", step="month", stepmode="backward"),
-            dict(count=6, label="6M", step="month", stepmode="backward"),
-            dict(count=1, label="YTD", step="year", stepmode="todate"),
-            dict(count=1, label="1Y", step="year", stepmode="backward"),
-            dict(step="all")
-        ])
-    )
-    )
-    fig.update_yaxes(title_text='Stock Price')
     for val in span:
         historical_data[f'{val} EMA'] = historical_data['Close'].ewm(span=val).mean()
         fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data[f'{val} EMA'], mode='lines', name=f'{val} EMA'))
