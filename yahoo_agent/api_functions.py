@@ -1,51 +1,165 @@
 import yfinance as yf
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
+import streamlit as st
 
-def get_stock_df(symbol):
+SPGCI = False
+
+def get_stock_df(symbol: str, days_ago: int):
     ticker = yf.Ticker(symbol)
-    todays_data = ticker.history(period='7d')
-    return todays_data
+    if not ticker:
+        print(f'BAD TICKER {symbol}')
+        raise NameError(f"Ticker {symbol} not found")
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=days_ago)
+    start_date = start_date.strftime('%Y-%m-%d')
+    end_date = end_date.strftime('%Y-%m-%d')
+    historical_data = ticker.history(start=start_date, end=end_date)
+    return historical_data
 
 
-def get_stock_price(symbol):
+def get_commodity_df(symbol: str, days_ago: int):
+    raise NotImplementedError('Need the SPGCI Key')
+
+
+def get_data_df(symbol: str, days_ago: int):
+    if SPGCI:
+        return get_commodity_df(symbol, days_ago)
+    else:
+        return get_stock_df(symbol, days_ago)
+
+
+def get_todays_price(symbol):
     ticker = yf.Ticker(symbol)
     todays_data = ticker.history(period='1d')
-    return round(todays_data['Close'][0], 2)
+    return round(todays_data['Close'].iloc[0], 2)
 
 
 def get_price_change_percent(symbol, days_ago):
-    ticker = yf.Ticker(symbol)
-
-    # Get today's date
-    end_date = datetime.now()
-
-    # Get the date N days ago
-    start_date = end_date - timedelta(days=days_ago)
-
-    # Convert dates to string format that yfinance can accept
-    start_date = start_date.strftime('%Y-%m-%d')
-    end_date = end_date.strftime('%Y-%m-%d')
-
-    # Get the historical data
-    historical_data = ticker.history(start=start_date, end=end_date)
-
-    # Get the closing price N days ago and today's closing price
+    historical_data = get_data_df(symbol, days_ago)
     old_price = historical_data['Close'].iloc[0]
     new_price = historical_data['Close'].iloc[-1]
-
-    # Calculate the percentage change
     percent_change = ((new_price - old_price) / old_price) * 100
 
+    # Plotly
+    fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
+        data=[
+        go.Candlestick(x=historical_data.index,
+        open=historical_data['Open'],
+        high=historical_data['High'],
+        low=historical_data['Low'],
+        close=historical_data['Close'],
+        # volume=historical_data['Volume'],
+    )])
+    fig.update_xaxes(rangebreaks=[
+        dict(bounds=["sat", "mon"]), #hide weekends
+        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
+    ],
+    title_text='Date',
+    rangeslider_visible=True,
+    rangeselector=dict(
+        buttons=list([
+            dict(count=1, label="1D", step="day", stepmode="backward"),
+            dict(count=5, label="5D", step="day", stepmode="backward"),
+            dict(count=1, label="1M", step="month", stepmode="backward"),
+            dict(count=6, label="6M", step="month", stepmode="backward"),
+            dict(count=1, label="YTD", step="year", stepmode="todate"),
+            dict(count=1, label="1Y", step="year", stepmode="backward"),
+            dict(step="all")
+        ])
+    )
+    )
+    fig.update_yaxes(title_text='Stock Price')
+    st.plotly_chart(fig, use_container_width=True)
+    return round(percent_change, 2)
+
+
+def get_simple_moving_average(symbol, days_ago, span):
+    historical_data = get_data_df(symbol, days_ago+span)
+    historical_data['SMA'] = historical_data['Close'].rolling(span).mean()
+
+    # Plotly
+    fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
+        data=[
+        go.Candlestick(name=f'{symbol}',
+        x=historical_data.index,
+        open=historical_data['Open'],
+        high=historical_data['High'],
+        low=historical_data['Low'],
+        close=historical_data['Close'],
+        # volume=historical_data['Volume'],
+    )])
+    fig.update_xaxes(rangebreaks=[
+        dict(bounds=["sat", "mon"]), #hide weekends
+        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
+    ],
+    title_text='Date',
+    rangeslider_visible=True,
+    rangeselector=dict(
+        buttons=list([
+            dict(count=1, label="1D", step="day", stepmode="backward"),
+            dict(count=5, label="5D", step="day", stepmode="backward"),
+            dict(count=1, label="1M", step="month", stepmode="backward"),
+            dict(count=6, label="6M", step="month", stepmode="backward"),
+            dict(count=1, label="YTD", step="year", stepmode="todate"),
+            dict(count=1, label="1Y", step="year", stepmode="backward"),
+            dict(step="all")
+        ])
+    )
+    )
+    fig.update_yaxes(title_text='Stock Price')
+    fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['SMA'], mode='lines', name=f'{span} SMA'))
+    st.plotly_chart(fig, use_container_width=True)
+    old_SMA = historical_data['SMA'].iloc[0]
+    new_SMA = historical_data['SMA'].iloc[-1]
+    percent_change = ((new_SMA - old_SMA) / old_SMA) * 100
+    return round(percent_change, 2)
+
+
+def get_exponential_moving_average(symbol, days_ago, span):
+    historical_data = get_data_df(symbol, days_ago+span)
+    historical_data['EMA'] = historical_data['Close'].ewm(span=span).mean()
+
+    # Plotly
+    fig = go.Figure(layout_title_text=f'{symbol} over {days_ago} days',
+        data=[
+        go.Candlestick(name=f'{symbol}',
+        x=historical_data.index,
+        open=historical_data['Open'],
+        high=historical_data['High'],
+        low=historical_data['Low'],
+        close=historical_data['Close'],
+        # volume=historical_data['Volume'],
+    )])
+    fig.update_xaxes(rangebreaks=[
+        dict(bounds=["sat", "mon"]), #hide weekends
+        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
+    ],
+    title_text='Date',
+    rangeslider_visible=True,
+    rangeselector=dict(
+        buttons=list([
+            dict(count=1, label="1D", step="day", stepmode="backward"),
+            dict(count=5, label="5D", step="day", stepmode="backward"),
+            dict(count=1, label="1M", step="month", stepmode="backward"),
+            dict(count=6, label="6M", step="month", stepmode="backward"),
+            dict(count=1, label="YTD", step="year", stepmode="todate"),
+            dict(count=1, label="1Y", step="year", stepmode="backward"),
+            dict(step="all")
+        ])
+    )
+    )
+    fig.update_yaxes(title_text='Stock Price')
+    fig.add_trace(go.Scatter(x=historical_data.index, y=historical_data['EMA'], mode='lines', name=f'{span} EMA'))
+    st.plotly_chart(fig, use_container_width=True)
+    old_EMA = historical_data['EMA'].iloc[0]
+    new_EMA = historical_data['EMA'].iloc[-1]
+    percent_change = ((new_EMA - old_EMA) / old_EMA) * 100
     return round(percent_change, 2)
 
 
 def calculate_performance(symbol, days_ago):
-    ticker = yf.Ticker(symbol)
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=days_ago)
-    start_date = start_date.strftime('%Y-%m-%d')
-    end_date = end_date.strftime('%Y-%m-%d')
-    historical_data = ticker.history(start=start_date, end=end_date)
+    historical_data = get_data_df(symbol, days_ago)
     old_price = historical_data['Close'].iloc[0]
     new_price = historical_data['Close'].iloc[-1]
     percent_change = ((new_price - old_price) / old_price) * 100
@@ -62,5 +176,5 @@ def get_best_performing(stocks, days_ago):
                 best_stock = stock
                 best_performance = performance
         except Exception as e:
-            print(f'Couls not caluclate performance for {stock}: {e}')
+            print(f'Could not calculate performance for {stock}: {e}')
     return best_stock, best_performance
