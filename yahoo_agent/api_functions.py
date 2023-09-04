@@ -105,23 +105,46 @@ def get_exponential_moving_average(symbol, days_ago, span):
     # return round(percent_change, 2)
 
 
-def calculate_performance(symbol, days_ago):
-    historical_data = get_data_df(symbol, days_ago)
-    old_price = historical_data['Close'].iloc[0]
-    new_price = historical_data['Close'].iloc[-1]
-    percent_change = ((new_price - old_price) / old_price) * 100
-    return round(percent_change, 2)
-
-
 def get_best_performing(stocks, days_ago):
     best_stock = None
     best_performance = None
+    fig = go.Figure()
+    
     for stock in stocks:
         try:
-            performance = calculate_performance(stock, days_ago)
+            historical_data = get_data_df(stock, days_ago)
+            old_price = historical_data['Close'].iloc[0]
+            new_price = historical_data['Close'].iloc[-1]
+            performance = ((new_price - old_price) / old_price) * 100
+            fig.add_trace(go.Scatter(
+                x=historical_data.index, 
+                y=historical_data['Close'],
+                mode='lines',
+                name=f'{stock}'
+                ))
             if best_performance is None or performance > best_performance:
                 best_stock = stock
                 best_performance = performance
         except Exception as e:
             print(f'Could not calculate performance for {stock}: {e}')
+    fig.update_xaxes(rangebreaks=[
+        dict(bounds=["sat", "mon"]), #hide weekends
+        dict(values=["2015-12-25", "2016-01-01"]),  # hide Christmas and New Year's
+    ],
+    title_text='Date',
+    rangeslider_visible=True,
+    rangeselector=dict(
+        buttons=list([
+            dict(count=1, label="1D", step="day", stepmode="backward"),
+            dict(count=5, label="5D", step="day", stepmode="backward"),
+            dict(count=1, label="1M", step="month", stepmode="backward"),
+            dict(count=6, label="6M", step="month", stepmode="backward"),
+            dict(count=1, label="YTD", step="year", stepmode="todate"),
+            dict(count=1, label="1Y", step="year", stepmode="backward"),
+            dict(step="all")
+        ])
+    )
+    )
+    fig.update_yaxes(title_text='Stock Price')
+    st.plotly_chart(fig, use_container_width=True)
     return best_stock, best_performance
