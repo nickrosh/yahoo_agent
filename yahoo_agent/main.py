@@ -22,7 +22,8 @@ def main():
         StockSMATool(),
         StockEMATool(),
     ]
-    llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo-0613')
+    # llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo-0613')
+    llm = ChatOpenAI(temperature=0, model='gpt-3.5-turbo')
     open_ai_agent = initialize_agent(
         tools,
         llm,

@@ -109,7 +109,7 @@ def get_best_performing(stocks, days_ago):
     best_stock = None
     best_performance = None
     fig = go.Figure()
-    
+
     for stock in stocks:
         try:
             historical_data = get_data_df(stock, days_ago)
